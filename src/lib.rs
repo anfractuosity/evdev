@@ -928,27 +928,23 @@ impl Device {
     }
 
     fn fill_events(&mut self) -> Result<(), Error> {
-        let mut buf = &mut self.pending_events;
-        loop {
-            buf.reserve(20);
-            let pre_len = buf.len();
-            let sz = unsafe {
-                libc::read(self.fd,
-                           buf.as_mut_ptr()
-                              .offset(pre_len as isize) as *mut libc::c_void,
-                           (size_of::<raw::input_event>() * (buf.capacity() - pre_len)) as libc::size_t)
-            };
-            if sz == -1 {
-                let errno = ::nix::Errno::last();
-                if errno != ::nix::Errno::EAGAIN {
-                    return Err(Error::from_errno(errno));
-                } else {
-                    break;
-                }
-            } else {
-                unsafe {
-                    buf.set_len(pre_len + (sz as usize / size_of::<raw::input_event>()));
-                }
+        let buf = &mut self.pending_events;
+        buf.reserve(20);
+        let pre_len = buf.len();
+        let sz = unsafe {
+            libc::read(self.fd,
+                       buf.as_mut_ptr()
+                          .offset(pre_len as isize) as *mut libc::c_void,
+                       (size_of::<raw::input_event>() * (buf.capacity() - pre_len)) as libc::size_t)
+        };
+        if sz == -1 {
+            let errno = ::nix::Errno::last();
+            if errno != ::nix::Errno::EAGAIN {
+                return Err(Error::from_errno(errno));
+            }
+        } else {
+            unsafe {
+                buf.set_len(pre_len + (sz as usize / size_of::<raw::input_event>()));
             }
         }
         Ok(())
